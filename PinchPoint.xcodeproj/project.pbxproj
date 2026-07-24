@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		FE75443A30137C6B0062AAE7 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = FE75443930137C660062AAE7 /* README.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		FE75441B30137C2A0062AAE7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		FE75440D30137C2A0062AAE7 /* PinchPoint.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PinchPoint.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE75441A30137C2A0062AAE7 /* PinchPointTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PinchPointTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE75442430137C2A0062AAE7 /* PinchPointUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PinchPointUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FE75443930137C660062AAE7 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -79,6 +84,7 @@
 				FE75441D30137C2A0062AAE7 /* PinchPointTests */,
 				FE75442730137C2A0062AAE7 /* PinchPointUITests */,
 				FE75440E30137C2A0062AAE7 /* Products */,
+				FE75443930137C660062AAE7 /* README.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -212,6 +218,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FE75443A30137C6B0062AAE7 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
