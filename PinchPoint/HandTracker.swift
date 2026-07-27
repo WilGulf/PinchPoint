@@ -20,11 +20,15 @@ final class HandTracker: NSObject {
     private var cursorModeExitCounter = 0
     private var cursorMode = false
     
+    private var clickUpCounter = 0
+    private let clickThreshold = 3
+    private var click = false
+    
     /*private var openPalmCounter = 0
     private var closedPalmCounter = 0
     private var openPalm = false*/
     
-    private let stableThreshold = 3
+    private let stableThreshold = 4
     
     private var smoothedX: CGFloat = 0
     private var smoothedY: CGFloat = 0
@@ -136,6 +140,11 @@ final class HandTracker: NSObject {
                 var newPosition: CGPoint = lastPosition
                 
                 if fingers[0].tip != nil && fingers[1].tip != nil {
+                    let pinchDistance = hypot((fingers[0].tip?.x ?? 0) - (fingers[1].tip?.x ?? 0), (fingers[0].tip?.y ?? 0) - (fingers[1].tip?.y ?? 0))
+                    if pinchDistance < 0.05 {
+                        updatePinch(isPinch: true)
+                    }
+                    
                     newPosition = CGPoint(x: (fingers[1].tip!.x + fingers[0].tip!.x) / 2, y: (fingers[1].tip!.y + fingers[0].tip!.y) / 2)
                 } else if fingers[0].tip != nil {
                     newPosition = CGPoint(x: fingers[0].tip!.x, y: fingers[0].tip!.y)
@@ -153,6 +162,7 @@ final class HandTracker: NSObject {
                     smoothedY = newPosition.y
                     hasInitializedPosition = true
                 }
+
                 print(lastPosition)
             }
             
@@ -160,6 +170,14 @@ final class HandTracker: NSObject {
             smoothedY = (smoothedY * smoothingFactor) + (lastPosition.y * (1 - smoothingFactor))
             let newLocation = CGPoint(x: (smoothedX) * sizeX, y: (smoothedY) * sizeY)
             CGDisplayMoveCursorToPoint(0, newLocation)
+            
+            if click {
+                CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: newLocation, mouseButton: .left)?.post(tap: .cghidEventTap)
+                CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: newLocation, mouseButton: .left)?.post(tap: .cghidEventTap)
+                
+                click = false
+                clickUpCounter = 0
+            }
             
         } catch {
             print("[Vision][ERR] extract points failed: \(error)")
@@ -187,5 +205,17 @@ final class HandTracker: NSObject {
     
     private func updateOpenPalm(isOpen: Bool) {
         
+    }
+    
+    private func updatePinch(isPinch: Bool) {
+        if isPinch {
+            clickUpCounter += 1
+            
+            if clickUpCounter >= clickThreshold {
+                click = true
+            }
+        } else {
+            clickUpCounter = 0
+        }
     }
 }
