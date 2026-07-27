@@ -23,10 +23,15 @@ final class HandTracker: NSObject {
     private var clickUpCounter = 0
     private let clickThreshold = 3
     private var click = false
+    private var rightClick = false
     
-    /*private var openPalmCounter = 0
+    private var openPalmCounter = 0
     private var closedPalmCounter = 0
-    private var openPalm = false*/
+    private var openPalm = 0
+    private let openPalmThreshold = 3
+    
+    private var lastFingerCount = 0
+    private var fingerCounter = 0
     
     private let stableThreshold = 4
     
@@ -81,7 +86,7 @@ final class HandTracker: NSObject {
             let points = try obs.recognizedPoints(.all)
             
             func p(_ j: VNHumanHandPoseObservation.JointName) -> CGPoint? {
-                if let rp = points[j], rp.confidence > 0.3 {
+                if let rp = points[j], rp.confidence > 0.25 {
                     let normalizedX = (rp.location.x - activeMinX) / (activeMaxX - activeMinX)
                     let normalizedY = (rp.location.y - activeMinY) / (activeMaxY - activeMinY)
                     return CGPoint(x: CGFloat(1 - normalizedX), y: CGFloat(1 - normalizedY))
@@ -125,60 +130,82 @@ final class HandTracker: NSObject {
             if extended.count <= 2 && extended.contains(1) && extended.contains(0) {
                 updateCursorMode(isOpen: true)
             }
-            if extended.count <= 1 {
+            if extended.count <= 0 {
                 updateCursorMode(isOpen: false)
             }
             
-            if extended.count >= 5 {
+            if extended.count == 5 {
                 updateOpenPalm(isOpen: true)
             } else {
                 updateOpenPalm(isOpen: false)
             }
             
-            if fingers[1].tip == nil && fingers[0].tip == nil { cursorMode = false }
-            if cursorMode {
-                var newPosition: CGPoint = lastPosition
+            if openPalm > 0 {
                 
-                if fingers[0].tip != nil && fingers[1].tip != nil {
-                    let pinchDistance = hypot((fingers[0].tip?.x ?? 0) - (fingers[1].tip?.x ?? 0), (fingers[0].tip?.y ?? 0) - (fingers[1].tip?.y ?? 0))
-                    if pinchDistance < 0.05 {
-                        updatePinch(isPinch: true)
+            } else {
+                
+                if fingers[1].tip == nil && fingers[0].tip == nil { cursorMode = false }
+                if cursorMode {
+                    var newPosition: CGPoint = lastPosition
+                    
+                    if fingers[0].tip != nil && fingers[1].tip != nil {
+                        let pinchDistance = hypot((fingers[0].tip?.x ?? 0) - (fingers[1].tip?.x ?? 0), (fingers[0].tip?.y ?? 0) - (fingers[1].tip?.y ?? 0))
+                        if pinchDistance < 0.05 {
+                            /*
+                             if fingers[2].tip != nil {
+                             let doublePinchDistance = hypot((fingers[0].tip?.x ?? 0) - (fingers[2].tip?.x ?? 0), (fingers[0].tip?.y ?? 0) - (fingers[2].tip?.y ?? 0))
+                             if doublePinchDistance < 0.1 {
+                             rightClick = true
+                             } else {
+                             rightClick = false
+                             }
+                             } else {
+                             rightClick = false
+                             }*/
+                            
+                            updatePinch(isPinch: true)
+                        } else {
+                            updatePinch(isPinch: false)
+                        }
+                        
+                        newPosition = CGPoint(x: (fingers[1].tip!.x + fingers[0].tip!.x) / 2, y: (fingers[1].tip!.y + fingers[0].tip!.y) / 2)
+                    } else if fingers[0].tip != nil {
+                        newPosition = CGPoint(x: fingers[0].tip!.x, y: fingers[0].tip!.y)
+                    } else if fingers[1].tip != nil {
+                        newPosition = CGPoint(x: fingers[1].tip!.x, y: fingers[1].tip!.y)
                     }
                     
-                    newPosition = CGPoint(x: (fingers[1].tip!.x + fingers[0].tip!.x) / 2, y: (fingers[1].tip!.y + fingers[0].tip!.y) / 2)
-                } else if fingers[0].tip != nil {
-                    newPosition = CGPoint(x: fingers[0].tip!.x, y: fingers[0].tip!.y)
-                } else if fingers[1].tip != nil {
-                    newPosition = CGPoint(x: fingers[1].tip!.x, y: fingers[1].tip!.y)
+                    let distance = hypot(newPosition.x - lastPosition.x, newPosition.y - lastPosition.y)
+                    if distance <= 0.25 {
+                        lastPosition = newPosition
+                    }
+                    if hasInitializedPosition == false {
+                        lastPosition = newPosition
+                        smoothedX = newPosition.x
+                        smoothedY = newPosition.y
+                        hasInitializedPosition = true
+                    }
+                    
+                    //print(lastPosition)
                 }
                 
-                let distance = hypot(newPosition.x - lastPosition.x, newPosition.y - lastPosition.y)
-                if distance <= 0.25 {
-                    lastPosition = newPosition
-                }
-                if hasInitializedPosition == false {
-                    lastPosition = newPosition
-                    smoothedX = newPosition.x
-                    smoothedY = newPosition.y
-                    hasInitializedPosition = true
-                }
-
-                print(lastPosition)
-            }
-            
-            smoothedX = (smoothedX * smoothingFactor) + (lastPosition.x * (1 - smoothingFactor))
-            smoothedY = (smoothedY * smoothingFactor) + (lastPosition.y * (1 - smoothingFactor))
-            let newLocation = CGPoint(x: (smoothedX) * sizeX, y: (smoothedY) * sizeY)
-            CGDisplayMoveCursorToPoint(0, newLocation)
-            
-            if click {
-                CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: newLocation, mouseButton: .left)?.post(tap: .cghidEventTap)
-                CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: newLocation, mouseButton: .left)?.post(tap: .cghidEventTap)
+                smoothedX = (smoothedX * smoothingFactor) + (lastPosition.x * (1 - smoothingFactor))
+                smoothedY = (smoothedY * smoothingFactor) + (lastPosition.y * (1 - smoothingFactor))
+                let newLocation = CGPoint(x: (smoothedX) * sizeX, y: (smoothedY) * sizeY)
+                CGDisplayMoveCursorToPoint(0, newLocation)
                 
-                click = false
-                clickUpCounter = 0
+                if click {
+                    if rightClick {
+                        CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: newLocation, mouseButton: .right)?.post(tap: .cghidEventTap)
+                        CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: newLocation, mouseButton: .right)?.post(tap: .cghidEventTap)
+                    } else {
+                        CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: newLocation, mouseButton: .left)?.post(tap: .cghidEventTap)
+                        CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: newLocation, mouseButton: .left)?.post(tap: .cghidEventTap)
+                    }
+                    
+                    updatePinch(isPinch: false)
+                }
             }
-            
         } catch {
             print("[Vision][ERR] extract points failed: \(error)")
         }
@@ -204,7 +231,40 @@ final class HandTracker: NSObject {
     }
     
     private func updateOpenPalm(isOpen: Bool) {
+        if isOpen {
+            openPalmCounter += 1
+            closedPalmCounter = 0
+            
+            if openPalmCounter >= openPalmThreshold {
+                openPalm = 1
+            }
+        } else {
+            closedPalmCounter += 1
+            openPalmCounter = 0
+            
+            if closedPalmCounter >= openPalmThreshold {
+                if openPalm == 1 {
+                    openPalm = 2
+                    closeWheel()
+                } else {
+                    openPalm = 0
+                }
+            }
+        }
+    }
+    
+    private func updateFingerCount(fingerCount: Int) {
+        if fingerCount == lastFingerCount {
+            fingerCounter += 1
+            
+            if fingerCounter < openPalmThreshold {
+                wheelAction(action: fingerCount)
+            }
+        } else {
+            fingerCounter = 0
+        }
         
+        lastFingerCount = fingerCount
     }
     
     private func updatePinch(isPinch: Bool) {
@@ -215,7 +275,23 @@ final class HandTracker: NSObject {
                 click = true
             }
         } else {
+            click = false
             clickUpCounter = 0
         }
+    }
+    
+    private func openWheel() {
+        
+    }
+    
+    private func closeWheel() {
+        openPalm = 0
+    }
+    
+    private func wheelAction(action: Int) {
+        print(action)
+        openPalm = 0
+        closeWheel()
+        print("Wheel closed")
     }
 }
