@@ -7,8 +7,12 @@
 
 import AVFoundation
 import Combine
+import CoreImage
 
 class FrameHandler: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+    @Published var frame: CGImage?
+    private let context = CIContext()
+    
     private let handTracker = HandTracker()
     private var permissionGranted = false
     
@@ -31,6 +35,8 @@ class FrameHandler: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBu
         
         videoOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "samplebuffer.queue"))
         captureSession.addOutput(videoOutput)
+        // Latency (.hd1280x720) or accuracy (.high)
+        captureSession.sessionPreset = .high
     }
     
     func captureOutput(
@@ -39,6 +45,20 @@ class FrameHandler: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBu
         from connectio: AVCaptureConnection
     ) {
         handTracker.process(sampleBuffer)
+        
+        /*guard let cgImage = imageFromSampleBuffer(sampleBuffer: sampleBuffer) else { return }
+        DispatchQueue.main.async { [unowned self] in
+            self.frame = cgImage
+        }*/
+    }
+    
+    private func imageFromSampleBuffer(sampleBuffer: CMSampleBuffer) -> CGImage? {
+        guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return nil }
+        
+        let ciImage = CIImage(cvPixelBuffer: imageBuffer)
+        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return nil }
+        
+        return cgImage
     }
     
     func checkPermission() {
