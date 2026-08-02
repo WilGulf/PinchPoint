@@ -46,10 +46,10 @@ class FrameHandler: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBu
     ) {
         handTracker.process(sampleBuffer)
         
-        /*guard let cgImage = imageFromSampleBuffer(sampleBuffer: sampleBuffer) else { return }
+        guard let cgImage = imageFromSampleBuffer(sampleBuffer: sampleBuffer) else { return }
         DispatchQueue.main.async { [unowned self] in
             self.frame = cgImage
-        }*/
+        }
     }
     
     private func imageFromSampleBuffer(sampleBuffer: CMSampleBuffer) -> CGImage? {

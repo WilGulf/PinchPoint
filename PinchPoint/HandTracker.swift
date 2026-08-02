@@ -33,6 +33,10 @@ final class HandTracker: NSObject {
     private var noHand = false
     private let noHandThreshold = 30
     
+    private var handScale: Double = 0
+    private var handScaleArray: [Double] = []
+    private let maxHandScaleEntries = 8
+    
     private var clickUpCounter = 0
     private var clickDownCounter = 0
     private var clickCoolDown = false
@@ -137,18 +141,22 @@ final class HandTracker: NSObject {
             let points = try obs.recognizedPoints(.all)
             
             func p(_ j: VNHumanHandPoseObservation.JointName) -> CGPoint? {
-                if let rp = points[j], rp.confidence > 0.65 {
+                if let rp = points[j], rp.confidence > 0.45 {
                     return CGPoint(x: CGFloat(1 - rp.location.x), y: CGFloat(1 - rp.location.y))
                 }
                 return nil
             }
             
-            guard let wrist = p(.wrist) else {
+            let wrist = p(.wrist)
+            if wrist == nil {
+                updateNoHand(handPresent: false)
+            } else {
+                updateNoHand(handPresent: true)
+            }
+            /*guard let wrist = p(.wrist) else {
                 updateNoHand(handPresent: false)
                 return
-            }
-            
-            updateNoHand(handPresent: true)
+            }*/
             
             struct Finger { let tip: CGPoint?; let mcp: CGPoint? }
             let fingers: [Finger] = [
@@ -161,22 +169,45 @@ final class HandTracker: NSObject {
             
             var extended: [Int] = []
             
+            var amountNotNil = 0
+            let count = 1...4
+            for index in count {
+                if fingers[index].mcp != nil {
+                    amountNotNil += 1
+                }
+            }
+            
+            guard amountNotNil > 0 else { return }
+            var center = CGPoint(x: 0, y: 0)
+            center.x = ((fingers[1].mcp?.x ?? 0) + (fingers[2].mcp?.x ?? 0) + (fingers[3].mcp?.x ?? 0) + (fingers[4].mcp?.x ?? 0)) / CGFloat(amountNotNil)
+            center.y = ((fingers[1].mcp?.y ?? 0) + (fingers[2].mcp?.y ?? 0) + (fingers[3].mcp?.y ?? 0) + (fingers[4].mcp?.y ?? 0)) / CGFloat(amountNotNil)
+            
             for (i, f) in fingers.enumerated() {
                 if let tip = f.tip, let mcp = f.mcp {
+                    
                     let dm = hypot(tip.x - mcp.x, tip.y - mcp.y)
-                    let dw = hypot(tip.x - wrist.x, tip.y - wrist.y)
+                    let dw = hypot(tip.x - center.x, tip.y - center.y)
                     
                     let isExtended: Bool
                     if i == 0 { // thumb
-                        isExtended = dw > 0.20 && dm > 0.12
+                        isExtended = dw > handScale / 1.15 /*0.20*/ && dm > handScale / 1.91 /*0.12*/
                     } else { // other fingers
-                        isExtended = dw > 0.16 && dm > 0.08
+                        isExtended = dw > handScale / 1.43 /*0.16*/ && dm > handScale / 2.87/*0.08*/
                     }
                     
                     if isExtended {
                         extended.append(i)
                     }
                 }
+            }
+            
+            if wrist != nil && fingers[2].mcp != nil {
+                if handScaleArray.count >= maxHandScaleEntries {
+                    handScaleArray.remove(at: 0)
+                }
+                handScaleArray.append(Double(hypot(wrist!.x - fingers[2].mcp!.x, wrist!.y - fingers[2].mcp!.y)))
+                handScale = handScaleArray.reduce(0, +) / Double(handScaleArray.count)
+                print(handScale)
             }
             
             if extended.count <= 2 && extended.contains(1) && extended.contains(0) {
@@ -190,24 +221,30 @@ final class HandTracker: NSObject {
                 guard fingers[0].tip != nil && fingers[1].tip != nil else { return }
                 var newPosition: CGPoint = lastPosition
                     
-                if fingers[0].tip != nil && fingers[1].tip != nil {
-                    let pinchDistance = hypot((fingers[0].tip?.x ?? 0) - (fingers[1].tip?.x ?? 0), (fingers[0].tip?.y ?? 0) - (fingers[1].tip?.y ?? 0))
-                    //print(pinchDistance)
-                    if pinchDistance < 0.05 {
-                        updatePinch(isPinch: true)
-                    } else {
-                        updatePinch(isPinch: false)
-                    }
+                let pinchDistance = hypot(fingers[0].tip!.x - fingers[1].tip!.x, fingers[0].tip!.y - fingers[1].tip!.y)
+                //print(pinchDistance)
+                if pinchDistance < handScale / 4.5 /*pinchDistance < 0.05*/ {
+                    updatePinch(isPinch: true)
+                    
+                    if fingers[2].tip != nil {
+                        let pinchDistance = hypot(fingers[1].tip!.x - fingers[2].tip!.x, fingers[1].tip!.y - fingers[2].tip!.y)
                         
-                    //print("index + thumb")
-                    newPosition = CGPoint(x: (fingers[1].tip!.x + fingers[0].tip!.x) / 2, y: (fingers[1].tip!.y + fingers[0].tip!.y) / 2)
-                } else if fingers[0].tip != nil {
-                    //print("thumb")
-                    newPosition = CGPoint(x: fingers[0].tip!.x, y: fingers[0].tip!.y)
+                        if pinchDistance < 0.12 && extended.contains(2) {
+                            if !clickLock {
+                                rightClick = true
+                            }
+                        } else {
+                            if !clickLock {
+                            }
+                                rightClick = false
+                        }
+                    }
                 } else {
-                    //print("index")
-                    newPosition = CGPoint(x: fingers[1].tip!.x, y: fingers[1].tip!.y)
+                    updatePinch(isPinch: false)
                 }
+                        
+                //print("index + thumb")
+                newPosition = CGPoint(x: (fingers[1].tip!.x + fingers[0].tip!.x) / 2, y: (fingers[1].tip!.y + fingers[0].tip!.y) / 2)
                 
                 if hasInitializedPosition == false {
                     lastPosition = newPosition
