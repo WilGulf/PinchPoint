@@ -19,7 +19,7 @@ final class HandTracker: NSObject {
     let sizeY: CGFloat = (NSScreen.main?.frame.height ?? 0)
     
     private var lastInference: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
-    private var minInferenceInterval: CFTimeInterval = 0.08
+    private var minInferenceInterval: CFTimeInterval =  1.0 / 25.0
     private var inferenceDurations: [CFTimeInterval] = []
     private let maxDurations = 30
     private var processesSicnceLastUpdate = 0
@@ -44,10 +44,12 @@ final class HandTracker: NSObject {
     private var click = false
     private var clickLock = false
     private var rightClick = false
+    private var clickPositionBuffer: CGPoint = CGPoint(x: 0, y: 0)
+    private var clickDownTime: CFAbsoluteTime = 0
     
     private var smoothedX: CGFloat = 0
     private var smoothedY: CGFloat = 0
-    private let smoothingFactor: CGFloat = 0.9
+    private let smoothingFactor: CGFloat = 0.8
     
     private var lastPosition: CGPoint = CGPoint(x: 0, y: 0)
     private var lastNormalizedPosition: CGPoint = CGPoint(x: 0, y: 0)
@@ -55,7 +57,7 @@ final class HandTracker: NSObject {
     
     private let activeMinX: CGFloat = 0.2
     private let activeMaxX: CGFloat = 0.8
-    private let activeMinY: CGFloat = 0.2
+    private let activeMinY: CGFloat = 0.3
     private let activeMaxY: CGFloat = 0.85
     
     override init() {
@@ -244,7 +246,8 @@ final class HandTracker: NSObject {
                 }
                         
                 //print("index + thumb")
-                newPosition = CGPoint(x: (fingers[1].tip!.x + fingers[0].tip!.x) / 2, y: (fingers[1].tip!.y + fingers[0].tip!.y) / 2)
+                //newPosition = CGPoint(x: (fingers[1].tip!.x + fingers[0].tip!.x) / 2, y: (fingers[1].tip!.y + fingers[0].tip!.y) / 2)
+                newPosition = fingers[0].tip!
                 
                 if hasInitializedPosition == false {
                     lastPosition = newPosition
@@ -254,7 +257,7 @@ final class HandTracker: NSObject {
                 }
                     
                 let distance = hypot(newPosition.x - lastPosition.x, newPosition.y - lastPosition.y)
-                if distance <= 0.15 {
+                if distance <= 0.25 {
                     let normalizedX = (newPosition.x - activeMinX) / (activeMaxX - activeMinX)
                     let normalizedY = (newPosition.y - activeMinY) / (activeMaxY - activeMinY)
                     lastNormalizedPosition = CGPoint(x: normalizedX, y: normalizedY)
@@ -275,6 +278,9 @@ final class HandTracker: NSObject {
                 
                 if click && !clickLock {
                     print("Down: ", rightClick)
+                    clickPositionBuffer = newLocation
+                    clickDownTime = CFAbsoluteTimeGetCurrent()
+                    
                     if rightClick {
                         DispatchQueue.main.async {
                             CGEvent(mouseEventSource: nil, mouseType: .rightMouseDown, mouseCursorPosition: newLocation, mouseButton: .right)?.post(tap: .cghidEventTap)
@@ -294,7 +300,12 @@ final class HandTracker: NSObject {
                 }
                 
                 if !click && !clickCoolDown {
-                    releaseMouseBtn(location: newLocation)
+                    let timeDown = CFAbsoluteTimeGetCurrent() - clickDownTime
+                    if timeDown < 0.5 {
+                        releaseMouseBtn(location: clickPositionBuffer)
+                    } else {
+                        releaseMouseBtn(location: newLocation)
+                    }
                 }
             }
         } catch {
