@@ -19,8 +19,41 @@ class FrameHandler: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBu
     private let captureSession = AVCaptureSession()
     private let sessionQueue = DispatchQueue(label: "camera.session.queue")
     
+    private var videoOutput: AVCaptureVideoDataOutput?
+    
     override init () {
         super.init()
+        self.checkPermission()
+    }
+    
+    func handlerStop() {
+        sessionQueue.async {
+            self.handTracker.cursorStop()
+            
+            if self.captureSession.isRunning {
+                self.captureSession.stopRunning()
+            }
+
+            for input in self.captureSession.inputs {
+                self.captureSession.removeInput(input)
+            }
+            
+            if let videoOutput = self.videoOutput {
+                videoOutput.setSampleBufferDelegate(nil, queue: nil)
+                self.captureSession.removeOutput(videoOutput)
+                self.videoOutput = nil
+            }
+
+            DispatchQueue.main.async {
+                self.frame = nil
+            }
+        }
+    }
+    
+    func handlerStart() {
+        guard !self.captureSession.isRunning else { return }
+        guard self.videoOutput == nil else { return }
+        
         self.checkPermission()
     }
     
@@ -35,6 +68,8 @@ class FrameHandler: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBu
         
         videoOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "samplebuffer.queue"))
         captureSession.addOutput(videoOutput)
+        self.videoOutput = videoOutput
+        
         // Latency (.hd1280x720) or accuracy (.high)
         captureSession.sessionPreset = .high
     }

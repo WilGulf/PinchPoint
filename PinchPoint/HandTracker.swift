@@ -60,11 +60,15 @@ final class HandTracker: NSObject {
     private let activeMinY: CGFloat = 0.3
     private let activeMaxY: CGFloat = 0.85
     
+    private var cursorActive: Bool = false
+    
     override init() {
         super.init()
         
+        cursorActive = true
+        
         cursorQueue.async {
-            while true {
+            while self.cursorActive {
                 if self.cursorMode && !self.noHand {
                     self.smoothedX = (self.smoothedX * self.smoothingFactor) + (self.lastNormalizedPosition.x * (1 - self.smoothingFactor))
                     self.smoothedY = (self.smoothedY * self.smoothingFactor) + (self.lastNormalizedPosition.y * (1 - self.smoothingFactor))
@@ -78,6 +82,10 @@ final class HandTracker: NSObject {
                 Thread.sleep(forTimeInterval: 1.0 / 60)
             }
         }
+    }
+    
+    func cursorStop() {
+        self.cursorActive = false
     }
     
     private var processLock = false

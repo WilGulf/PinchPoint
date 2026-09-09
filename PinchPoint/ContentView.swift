@@ -17,7 +17,7 @@ struct ContentView: View {
     var body: some View {
         VStack {
             Text("Hello World")
-            
+                        
             if let frame = model.frame {
                 Image(decorative: frame, scale: 1)
                     .resizable()
@@ -27,6 +27,14 @@ struct ContentView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .shadow(radius: 5)
             }
+        }
+        
+        Button("Stop") {
+            model.handlerStop()
+        }
+        
+        Button("Start") {
+            model.handlerStart()
         }
     }
 }
