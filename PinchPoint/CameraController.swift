@@ -8,6 +8,7 @@
 import AVFoundation
 import Combine
 import CoreImage
+import AppKit
 
 class FrameHandler: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     @Published var frame: CGImage?
@@ -21,14 +22,32 @@ class FrameHandler: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBu
     
     private var videoOutput: AVCaptureVideoDataOutput?
     
+    private var captureRunning: Bool = false
+    
     override init () {
         super.init()
         self.checkPermission()
     }
     
+    func isRunning() -> Bool {
+        return captureRunning
+    }
+    
     func handlerStop() {
         sessionQueue.async {
             self.handTracker.cursorStop()
+            
+            var attempt = 0
+            while self.handTracker.isRunning() {
+                self.handTracker.cursorStop()
+                
+                attempt += 1
+                if attempt > 25 {
+                    DispatchQueue.main.async {
+                        NSApplication.shared.terminate(nil)
+                    }
+                }
+            }
             
             if self.captureSession.isRunning {
                 self.captureSession.stopRunning()
@@ -48,6 +67,8 @@ class FrameHandler: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBu
                 self.frame = nil
             }
         }
+        
+        captureRunning = false
     }
     
     func handlerStart() {
@@ -104,6 +125,8 @@ class FrameHandler: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBu
             sessionQueue.async { [unowned self] in
                 self.setupCaptureSession()
                 self.captureSession.startRunning()
+                handTracker.cursorStart()
+                captureRunning = true
             }
         case .notDetermined:
             self.requestPermission()

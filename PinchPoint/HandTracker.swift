@@ -64,8 +64,15 @@ final class HandTracker: NSObject {
     
     override init() {
         super.init()
-        
-        cursorActive = true
+        cursorStart()
+    }
+    
+    func cursorStop() {
+        self.cursorActive = false
+    }
+    
+    func cursorStart() {
+        self.cursorActive = true
         
         cursorQueue.async {
             while self.cursorActive {
@@ -78,15 +85,16 @@ final class HandTracker: NSObject {
                         CGDisplayMoveCursorToPoint(CGMainDisplayID(), newLocation)
                     }
                 }
-                
+                    
                 Thread.sleep(forTimeInterval: 1.0 / 60)
             }
         }
     }
     
-    func cursorStop() {
-        self.cursorActive = false
+    func isRunning() -> Bool {
+        return self.cursorActive
     }
+
     
     private var processLock = false
     func process(_ sampleBuffer: CMSampleBuffer) {
