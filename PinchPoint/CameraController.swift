@@ -92,7 +92,7 @@ class FrameHandler: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBu
         self.videoOutput = videoOutput
         
         // Latency (.hd1280x720) or accuracy (.high)
-        captureSession.sessionPreset = .high
+        captureSession.sessionPreset = .hd1280x720
     }
     
     func captureOutput(
