@@ -7,6 +7,17 @@
 
 import SwiftUI
 
+func getAppVersion() -> (version: String, build: String) {
+    if
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+    {
+        return (version, build)
+    } else {
+        return ("Unknown", "Unknown")
+    }
+}
+
 @main
 struct PinchPointApp: App {
     @StateObject private var model = FrameHandler()

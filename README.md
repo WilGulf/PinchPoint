@@ -1,12 +1,13 @@
-#PinchPoint
+# PinchPoint
 
 Pinch and Point to control your macs mouse.
 
 ## Using PinchPoint
 
 The installation of PinchPoint is as easy as any other application on macos, you drag and drop the file into Applications. Running is a bit annoying cause macOS flags the app as not signed and downloaded from the internet, to still open it you will have to navigate to the privacy section in settings and click open on the app.
+If during installation macOS marks the app file as corrupt/broken issue this command from the terminal to "fix" the app:`xattr -cr /Path/To/The/App.app
 
-When the app is running you can simple put up your hand in front of the camera and the proram will automatically start tracking. The tracking is not perfect, for the best results it is recommended to have a not so distracting background and not being in a dark place. It may not lock on at first, if not try to turn your hand around until the cursor starts moving.
+When the app is running you can simple put up your hand in front of the camera and the proram will automatically start tracking. The tracking is not perfect, for the best results it is recommended to have a not so distracting background and ensure good lighting in the room. The tracking may not lock to your hand at first, if so try to turn your hand around until the cursor starts moving.
 
 ## How it works
 

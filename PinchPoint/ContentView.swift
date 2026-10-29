@@ -6,10 +6,11 @@
 //
 
 import SwiftUI
+import Vision
 
 struct PreviewView: View {
     @EnvironmentObject var model: FrameHandler
-    
+        
     var body: some View {
         VStack() {
             if let frame = model.frame {
@@ -36,13 +37,43 @@ struct PreviewView: View {
 
 struct GeneralView: View {
     var body: some View {
-        Text("Hello World")
+        Text("Currently no settings can be changed.")
     }
 }
 
 struct AboutView: View {
+    @State private var showBuildNumber: Bool = false
+    
     var body: some View {
-        Text("PinchPoint")
+        VStack {
+            HStack {
+                let (appVersion, appBuild) = getAppVersion()
+                
+                Text("Version")
+                Spacer()
+                if showBuildNumber {
+                    Text(appBuild)
+                }
+                Text(appVersion)
+            }
+            .onTapGesture {
+                showBuildNumber.toggle()
+            }
+            
+            Divider()
+                        
+            HStack {
+                Text("Github")
+                Spacer()
+                Text("WilGulf/PinchPoint")
+            }
+        }
+        .padding()
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+        )
+        .padding(.horizontal, 36)
     }
 }
 
@@ -98,5 +129,5 @@ struct MenuBarContentView: View {
 }
 
 #Preview {
-    ContentView()
+    AboutView()
 }
